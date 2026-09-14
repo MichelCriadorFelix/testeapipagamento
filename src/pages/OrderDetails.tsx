@@ -159,7 +159,7 @@ export default function OrderDetails() {
     if (!id) return;
     
     // Listen to Order in real-time
-    const orderRef = doc(db, 'orders', id);
+    const orderRef = doc(db, 'pix_test_orders', id);
     const unsubscribeOrder = onSnapshot(orderRef, (snapshot) => {
       if (snapshot.exists()) {
         const newOrderData = { id: snapshot.id, ...snapshot.data() } as Order;
@@ -174,7 +174,7 @@ export default function OrderDetails() {
     });
 
     // Listen to messages in real-time
-    const q = query(collection(db, 'orders', id, 'messages'), orderBy('createdAt', 'asc'));
+    const q = query(collection(db, 'pix_test_orders', id, 'messages'), orderBy('createdAt', 'asc'));
     const unsubscribeMessages = onSnapshot(q, (snapshot) => {
       setMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatMessage)));
       setTimeout(() => {
@@ -301,7 +301,7 @@ export default function OrderDetails() {
         setUploading(false);
 
         // Salva no banco de forma assíncrona
-        addDoc(collection(db, 'orders', id, 'messages'), {
+        addDoc(collection(db, 'pix_test_orders', id, 'messages'), {
           senderId: user.uid,
           senderName: user.name,
           text: textToSend || 'Envio de comprovante/imagem',
@@ -312,7 +312,7 @@ export default function OrderDetails() {
         });
 
         if (imageUrl && order?.status === 'pending_payment') {
-          updateDoc(doc(db, 'orders', id), {
+          updateDoc(doc(db, 'pix_test_orders', id), {
             receiptUrl: imageUrl
           }).catch(err => {
             console.error('Erro assíncrono ao vincular comprovante:', err);
@@ -370,7 +370,7 @@ export default function OrderDetails() {
 
     setUploading(true); // Reuse uploading state to prevent multiple clicks
     try {
-      await updateDoc(doc(db, 'orders', id), { status: newStatus, updatedAt: Date.now() });
+      await updateDoc(doc(db, 'pix_test_orders', id), { status: newStatus, updatedAt: Date.now() });
       setOrder(prev => prev ? { ...prev, status: newStatus } : null);
 
       // Loyalty points are only ever moved here, via an admin-authenticated
@@ -383,7 +383,7 @@ export default function OrderDetails() {
         if (newStatus === 'preparing' && (order.pointsRedeemed || 0) > 0 && !order.pointsDebited) {
           await runTransaction(db, async (tx) => {
             const userRef = doc(db, 'users', order.userId);
-            const orderRef = doc(db, 'orders', id);
+            const orderRef = doc(db, 'pix_test_orders', id);
             const [userSnap, orderSnap] = await Promise.all([tx.get(userRef), tx.get(orderRef)]);
             if (!userSnap.exists() || !orderSnap.exists() || orderSnap.data().pointsDebited) return;
             const currentPoints = userSnap.data().points || 0;
@@ -394,7 +394,7 @@ export default function OrderDetails() {
         } else if (newStatus === 'completed' && (order.pointsEarned || 0) > 0 && !order.pointsCredited) {
           await runTransaction(db, async (tx) => {
             const userRef = doc(db, 'users', order.userId);
-            const orderRef = doc(db, 'orders', id);
+            const orderRef = doc(db, 'pix_test_orders', id);
             const [userSnap, orderSnap] = await Promise.all([tx.get(userRef), tx.get(orderRef)]);
             if (!userSnap.exists() || !orderSnap.exists() || orderSnap.data().pointsCredited) return;
             const currentPoints = userSnap.data().points || 0;
@@ -406,7 +406,7 @@ export default function OrderDetails() {
           // Refund the redeemed points if the order that spent them never went through.
           await runTransaction(db, async (tx) => {
             const userRef = doc(db, 'users', order.userId);
-            const orderRef = doc(db, 'orders', id);
+            const orderRef = doc(db, 'pix_test_orders', id);
             const [userSnap, orderSnap] = await Promise.all([tx.get(userRef), tx.get(orderRef)]);
             if (!userSnap.exists() || !orderSnap.exists() || !orderSnap.data().pointsDebited) return;
             const currentPoints = userSnap.data().points || 0;
@@ -444,7 +444,7 @@ export default function OrderDetails() {
       }
 
       if (systemMessage) {
-        await addDoc(collection(db, 'orders', id, 'messages'), {
+        await addDoc(collection(db, 'pix_test_orders', id, 'messages'), {
           senderId: 'system',
           senderName: companyInfo.name || 'Estabelecimento',
           text: systemMessage,
@@ -469,8 +469,8 @@ export default function OrderDetails() {
     }
   };
 
-  const copyPix = () => {
-    navigator.clipboard.writeText(companyInfo.pixKey);
+  const copyPix = (text: string = companyInfo.pixKey) => {
+    navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -490,7 +490,7 @@ export default function OrderDetails() {
     try {
       const oldFee = order.deliveryFee || 0;
       const newTotal = order.total - oldFee + newFee;
-      await updateDoc(doc(db, 'orders', id), {
+      await updateDoc(doc(db, 'pix_test_orders', id), {
         deliveryFee: newFee,
         deliveryFeePending: false,
         total: newTotal,
@@ -499,7 +499,7 @@ export default function OrderDetails() {
       setOrder(prev => prev ? { ...prev, deliveryFee: newFee, deliveryFeePending: false, total: newTotal } : null);
       setDeliveryFeeInput('');
 
-      await addDoc(collection(db, 'orders', id, 'messages'), {
+      await addDoc(collection(db, 'pix_test_orders', id, 'messages'), {
         senderId: 'system',
         senderName: companyInfo.name || 'Estabelecimento',
         text: `📦 A taxa de entrega do seu pedido foi confirmada em ${formatCurrency(newFee)}. Total atualizado do pedido: ${formatCurrency(newTotal)}.`,
@@ -1158,24 +1158,36 @@ export default function OrderDetails() {
               {(!order.paymentMethod || order.paymentMethod === 'pix') ? (
                 <div className="bg-yellow-50 p-6 rounded-lg border border-yellow-200 mt-6 text-center">
                   <h3 className="font-bold text-yellow-900 mb-2">Pagamento via PIX</h3>
-                  <p className="text-yellow-800 text-sm mb-4">
-                    Copie a chave PIX abaixo, realize o pagamento e envie o comprovante no chat ao lado.
-                  </p>
-                  <div className="flex flex-col items-center justify-center space-y-2">
-                    <div className="flex items-center justify-center space-x-2">
-                      <code className="bg-white px-4 py-2 rounded font-mono text-lg font-bold border border-yellow-300">
-                        {companyInfo.pixKey}
-                      </code>
-                      <button onClick={copyPix} className="p-2 bg-yellow-200 text-yellow-900 rounded hover:bg-yellow-300 transition-colors" title="Copiar chave PIX">
-                        {copied ? <Check size={20} /> : <Copy size={20} />}
-                      </button>
-                    </div>
-                    {companyInfo.pixKeyName && (
-                      <p className="text-[10px] text-yellow-800 font-bold uppercase tracking-wider mt-1">
-                        Beneficiário: {companyInfo.pixKeyName}
+                  {order.pixQrCode && order.pixCopiaECola ? (
+                    <>
+                      <p className="text-yellow-800 text-sm mb-4">
+                        Escaneie o QR Code ou copie o código abaixo. A confirmação é automática — assim que o pagamento cair, este pedido muda sozinho para "Em preparo".
                       </p>
-                    )}
-                  </div>
+                      <div className="flex flex-col items-center justify-center space-y-3">
+                        <img
+                          src={`data:image/png;base64,${order.pixQrCode}`}
+                          alt="QR Code PIX"
+                          className="w-48 h-48 border border-yellow-300 rounded-lg bg-white p-2"
+                        />
+                        <button
+                          onClick={() => copyPix(order.pixCopiaECola)}
+                          className="flex items-center gap-2 px-4 py-2 bg-yellow-200 text-yellow-900 rounded-lg font-bold text-xs uppercase tracking-wider hover:bg-yellow-300 transition-colors"
+                        >
+                          {copied ? <Check size={16} /> : <Copy size={16} />}
+                          {copied ? 'Copiado!' : 'Copiar código PIX (copia e cola)'}
+                        </button>
+                        <div className="flex items-center gap-2 text-yellow-700 text-xs font-bold">
+                          <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+                          Aguardando confirmação do pagamento...
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-4 gap-2 text-yellow-800 text-sm">
+                      <div className="w-6 h-6 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin" />
+                      Gerando QR Code PIX...
+                    </div>
+                  )}
                 </div>
               ) : order.paymentMethod === 'credit' || order.paymentMethod === 'debit' ? (
                 <div className="bg-blue-50 p-6 rounded-lg border border-blue-200 mt-6 text-center">

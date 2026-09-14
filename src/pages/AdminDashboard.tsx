@@ -410,7 +410,7 @@ export default function AdminDashboard() {
 
     // Load ALL orders for dynamic list filtering & history & CRM
     const qAll = query(
-      collection(db, 'orders'),
+      collection(db, 'pix_test_orders'),
       orderBy('createdAt', 'desc'),
       limit(2000)
     );
@@ -469,7 +469,7 @@ export default function AdminDashboard() {
 
       setStats({ pending, preparing, todayTotal });
     }, (err) => {
-      handleFirestoreError(err, OperationType.LIST, 'orders');
+      handleFirestoreError(err, OperationType.LIST, 'pix_test_orders');
     });
 
     // Load All Users for Team Management

@@ -120,5 +120,32 @@ service cloud.firestore {
     match /finances/{financeId} {
       allow read, write: if isAdmin();
     }
+
+    // Sandbox collection for testing automated PIX payment confirmation
+    // (Mercado Pago) without touching real orders. The webhook that flips
+    // status to 'preparing' runs on the Firebase Admin SDK, which bypasses
+    // these rules entirely — this only governs the client-side test app.
+    match /pix_test_orders/{orderId} {
+      allow read: if isAdmin() || isOwner(resource.data.userId);
+      allow create: if isSignedIn() &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.status == 'pending_payment' &&
+        request.resource.data.total is number &&
+        request.resource.data.total > 0;
+      allow update: if isAdmin() ||
+        (isOwner(resource.data.userId) &&
+         resource.data.status == 'pending_payment' &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['receiptUrl', 'updatedAt', 'pixQrCode', 'pixCopiaECola', 'mpPaymentId']));
+      allow delete: if isAdmin();
+
+      match /messages/{messageId} {
+        allow read: if isAdmin() ||
+          isOwner(get(/databases/$(database)/documents/pix_test_orders/$(orderId)).data.userId);
+        allow create: if isAdmin() ||
+          (isOwner(get(/databases/$(database)/documents/pix_test_orders/$(orderId)).data.userId) &&
+           request.resource.data.senderId == request.auth.uid);
+        allow update, delete: if isAdmin();
+      }
+    }
   }
 }

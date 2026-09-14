@@ -21,7 +21,7 @@ export default function AdminFinances() {
       setFinances(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FinanceEntry)));
     });
 
-    const unsubOrders = onSnapshot(query(collection(db, 'orders'), orderBy('createdAt', 'desc'), limit(2000)), (snapshot) => {
+    const unsubOrders = onSnapshot(query(collection(db, 'pix_test_orders'), orderBy('createdAt', 'desc'), limit(2000)), (snapshot) => {
       setOrders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order)));
     });
 

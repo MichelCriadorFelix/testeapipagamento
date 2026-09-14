@@ -99,6 +99,16 @@ export interface Order {
   rewardApplied?: { id: string; label: string; discountAmount: number };
   pointsCredited?: boolean;
   pointsDebited?: boolean;
+  // Automated PIX (Mercado Pago sandbox). pixQrCode is a base64 PNG,
+  // pixCopiaECola the EMV "copia e cola" string; both are written by
+  // api/create-pix-payment.ts right after the order is created. Status
+  // flips to 'preparing' automatically by api/mercadopago-webhook.ts once
+  // Mercado Pago confirms the payment — no manual admin check needed.
+  mpPaymentId?: string;
+  mpStatus?: string;
+  pixQrCode?: string;
+  pixCopiaECola?: string;
+  paidAt?: number;
 }
 
 export interface ChatMessage {

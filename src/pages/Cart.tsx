@@ -5,6 +5,7 @@ import { formatCurrency, calculateDistance, formatSizeLabel, geocodeBrazilianAdd
 import { collection, addDoc, doc, onSnapshot } from 'firebase/firestore';
 import { db, sanitizeForFirestore } from '../lib/firebase';
 import { notifyAdminsOfNewOrder } from '../lib/push';
+import { createPixPayment } from '../lib/pix';
 import { useNavigate } from 'react-router-dom';
 import { Trash2, MapPin, Phone, User as UserIcon, Edit2, CreditCard, DollarSign, QrCode, MessageSquare, MessageCircle, AlertCircle, Check, X, Image as ImageIcon, Truck, ShoppingBag, UtensilsCrossed, Store, Gift, Star } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -343,8 +344,12 @@ export default function Cart() {
         updatedAt: Date.now()
       });
 
-      const orderRef = await addDoc(collection(db, 'orders'), orderPayload);
+      const orderRef = await addDoc(collection(db, 'pix_test_orders'), orderPayload);
       notifyAdminsOfNewOrder(orderRef.id);
+
+      if (paymentMethod === 'pix') {
+        createPixPayment(orderRef.id, finalTotal, user.email || 'cliente@sensacaogourmet-teste.com');
+      }
 
       clearCart();
       

@@ -49,7 +49,7 @@ export default function Orders() {
     // on "Carregando pedidos..." forever. Filtering by userId only avoids
     // the index requirement entirely; sorting happens here instead.
     const q = query(
-      collection(db, 'orders'),
+      collection(db, 'pix_test_orders'),
       where('userId', '==', user.uid),
       limit(500)
     );

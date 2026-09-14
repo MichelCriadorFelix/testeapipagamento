@@ -57,7 +57,7 @@ export default async function handler(req: any, res: any) {
     const app = getAdminApp();
     const db = getFirestore(app);
 
-    const orderSnap = await db.collection('orders').doc(orderId).get();
+    const orderSnap = await db.collection('pix_test_orders').doc(orderId).get();
     if (!orderSnap.exists) {
       res.status(404).json({ error: 'Order not found' });
       return;
