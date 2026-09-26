@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { collection, query, onSnapshot, doc, updateDoc, deleteDoc, setDoc, addDoc, writeBatch } from 'firebase/firestore';
 import { db, sanitizeForFirestore, handleFirestoreError, OperationType } from '../lib/firebase';
 import { Product } from '../types';
-import { formatCurrency, compressAndUploadImage, migrateBase64ImageToStorage } from '../lib/utils';
+import { formatCurrency, compressAndUploadImage, compressImage } from '../lib/utils';
 import { Edit, Trash2, Plus, X, Check, AlertTriangle, AlertCircle, Search, Image as ImageIcon, UploadCloud, ChevronUp, ChevronDown, PackageX } from 'lucide-react';
 import { useRef } from 'react';
 import { initialMenu } from '../lib/seedData';
@@ -60,18 +60,8 @@ export default function AdminMenu() {
   // uploads were wired up), which is what made the whole menu slow to load
   // — every read had to transfer every embedded image. Whenever one shows
   // up, move it to Storage in the background and swap in the short URL.
-  const migratingRef = useRef<Set<string>>(new Set());
-  useEffect(() => {
-    products.forEach(product => {
-      if (product.imageUrl?.startsWith('data:image') && !migratingRef.current.has(product.id)) {
-        migratingRef.current.add(product.id);
-        migrateBase64ImageToStorage(product.imageUrl, `products/${product.id}-${Date.now()}.jpg`)
-          .then(url => updateDoc(doc(db, 'products', product.id), { imageUrl: url }))
-          .catch(err => console.error('Falha ao migrar imagem do produto', product.id, err))
-          .finally(() => migratingRef.current.delete(product.id));
-      }
-    });
-  }, [products]);
+  // (Disabled in this sandbox: photos are intentionally kept inline as small
+  // compressed images inside the product doc, since there is no Supabase.)
 
   const handleToggleAvailable = async (product: Product) => {
     try {
@@ -276,9 +266,10 @@ export default function AdminMenu() {
         try {
           imageUrl = await compressAndUploadImage(imageFile, storagePath, 800, 800, 0.7);
         } catch (uploadErr) {
-          // Sandbox has no Supabase configured: save the item without a photo
-          // instead of blocking the whole save.
-          console.warn('Image upload skipped:', uploadErr);
+          // No Supabase in the sandbox: keep the photo as a small compressed
+          // data URL saved directly in the product document (Firestore).
+          console.warn('Image host unavailable, storing inline:', uploadErr);
+          imageUrl = await compressImage(imageFile, 500, 500, 0.6);
         }
       }
 
