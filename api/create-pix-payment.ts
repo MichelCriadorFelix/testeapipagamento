@@ -72,7 +72,15 @@ export default async function handler(req: any, res: any) {
         transaction_amount: Math.round(amount * 100) / 100,
         description: description || `Pedido ${orderId}`,
         payment_method_id: 'pix',
-        payer: { email: payerEmail || 'cliente@sensacaogourmet-teste.com' },
+        // Phone-only accounts carry an internal pseudo-email
+        // (…@sg-phone.internal) that Mercado Pago rejects, so anything that
+        // isn't a normal-looking address falls back to a generic one.
+        payer: {
+          email:
+            typeof payerEmail === 'string' && /^[^\s@]+@[^\s@]+\.(com|com\.br|net|org|br)$/i.test(payerEmail)
+              ? payerEmail
+              : 'cliente@sensacaogourmet.com.br',
+        },
         external_reference: orderId,
         notification_url: notificationUrl,
       }),
