@@ -1,12 +1,12 @@
 {
-  "projectId": "sensacaogourmet-f08d8",
-  "appId": "1:295451762429:web:a94ea2423e146b02cda894",
-  "apiKey": "AIzaSyDBc7jprmByDz2a1GR5kkWDay9FVJGH-pY",
-  "authDomain": "sensacaogourmet-f08d8.firebaseapp.com",
+  "projectId": "teste-b1925",
+  "appId": "1:714917090406:web:080c4b3cd831e7e4d709a7",
+  "apiKey": "AIzaSyD48EriFYcA3Av0uP0K5vVMYqdukxLWQZE",
+  "authDomain": "teste-b1925.firebaseapp.com",
   "firestoreDatabaseId": "(default)",
-  "storageBucket": "sensacaogourmet-f08d8.firebasestorage.app",
-  "messagingSenderId": "295451762429",
-  "measurementId": "G-PYPW9F9ZT3",
+  "storageBucket": "teste-b1925.firebasestorage.app",
+  "messagingSenderId": "714917090406",
+  "measurementId": "G-2MP5CNR3R5",
   "oAuthClientId": "",
   "recaptchaSiteKey": ""
 }
