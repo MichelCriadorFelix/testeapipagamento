@@ -51,6 +51,11 @@ import {
   Lock
 } from 'lucide-react';
 import { playNotificationSound, startRing, stopRing } from '../lib/audio';
+
+// A PIX order the customer hasn't paid yet (or abandoned). Admins must not be
+// alerted about it or see it in the working queue until the payment lands.
+const isUnpaidPix = (o: { paymentMethod?: string; paidAt?: number; status?: string }) =>
+  o.paymentMethod === 'pix' && !o.paidAt && o.status === 'pending_payment';
 import { DEFAULT_OPENING_HOURS, DAY_NAMES, DAYS_ORDER } from '../lib/openingHours';
 
 const getAdminStatusLabel = (status: Order['status'], serviceType?: string) => {
@@ -429,7 +434,7 @@ export default function AdminDashboard() {
       let todayTotal = 0;
 
       orders.forEach(order => {
-        if (order.status === 'pending_payment') pending++;
+        if (order.status === 'pending_payment' && !isUnpaidPix(order)) pending++;
         if (order.status === 'preparing') preparing++;
         if (order.createdAt >= todayStartMs && order.status === 'completed') {
           todayTotal += order.total;
@@ -439,10 +444,15 @@ export default function AdminDashboard() {
       // Sound notification for new orders
       let hasNewRecentOrder = false;
       snapshot.docChanges().forEach((change) => {
+        const data = change.doc.data();
         if (change.type === 'added') {
-          const data = change.doc.data();
-          // Created in the last 15 seconds
-          if (data && data.createdAt && (Date.now() - data.createdAt < 15000)) {
+          // Created in the last 15 seconds (unpaid PIX orders don't count)
+          if (data && data.createdAt && (Date.now() - data.createdAt < 15000) && !isUnpaidPix(data)) {
+            hasNewRecentOrder = true;
+          }
+        } else if (change.type === 'modified') {
+          // PIX just got confirmed automatically
+          if (data && data.paidAt && !data.pixAckAt && (Date.now() - data.paidAt < 15000)) {
             hasNewRecentOrder = true;
           }
         }
@@ -794,7 +804,7 @@ export default function AdminDashboard() {
   }, [allOrders, finances, crmPeriod]);
 
   const { activeOrdersCount, activeOrdersList } = useMemo(() => {
-    const list = allOrders.filter(o => o.status !== 'completed' && o.status !== 'cancelled');
+    const list = allOrders.filter(o => o.status !== 'completed' && o.status !== 'cancelled' && !isUnpaidPix(o));
     return {
       activeOrdersCount: list.length,
       activeOrdersList: list

@@ -345,18 +345,20 @@ export default function Cart() {
       });
 
       const orderRef = await addDoc(collection(db, 'pix_test_orders'), orderPayload);
-      notifyAdminsOfNewOrder(orderRef.id);
-
+      // PIX orders reach the admin only after the payment is confirmed (the
+      // Mercado Pago webhook sends that push), so an abandoned checkout
+      // never rings anyone.
       if (paymentMethod === 'pix') {
         createPixPayment(orderRef.id, finalTotal, user.email || 'cliente@sensacaogourmet-teste.com');
+      } else {
+        notifyAdminsOfNewOrder(orderRef.id);
       }
 
       clearCart();
       
-      if (companyInfo?.phone) {
+      if (companyInfo?.phone && paymentMethod !== 'pix') {
         let paymentStr: string = paymentMethod;
-        if (paymentMethod === 'pix') paymentStr = 'PIX';
-        else if (paymentMethod === 'credit') paymentStr = 'Cartão de Crédito';
+        if (paymentMethod === 'credit') paymentStr = 'Cartão de Crédito';
         else if (paymentMethod === 'debit') paymentStr = 'Cartão de Débito';
         else if (paymentMethod === 'cash') paymentStr = 'Dinheiro';
         

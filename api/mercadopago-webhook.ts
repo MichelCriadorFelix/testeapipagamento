@@ -1,5 +1,6 @@
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import { getMessaging } from 'firebase-admin/messaging';
 
 // Mercado Pago calls this URL every time a payment's status changes. The
 // notification body only ever carries a payment id — it must never be
@@ -98,6 +99,33 @@ export default async function handler(req: any, res: any) {
     }
 
     await orderRef.update(update);
+
+    // PIX orders are hidden from admins until paid, so the push that a normal
+    // order sends at creation is sent here instead, the moment payment lands.
+    if (update.status === 'preparing') {
+      try {
+        const order = orderSnap.data() as any;
+        const adminsSnap = await db.collection('users').where('role', '==', 'admin').get();
+        const tokens: string[] = [];
+        adminsSnap.forEach((d) => {
+          const t = d.data().fcmTokens;
+          if (Array.isArray(t)) tokens.push(...t.filter((x) => typeof x === 'string'));
+        });
+        if (tokens.length > 0) {
+          const value = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.total || 0);
+          await getMessaging(app).sendEachForMulticast({
+            tokens,
+            notification: {
+              title: 'PIX confirmado — novo pedido pago!',
+              body: `${order.userName || 'Cliente'} — ${value}`,
+            },
+            data: { orderId },
+          });
+        }
+      } catch (pushErr) {
+        console.error('push after PIX confirmation failed', pushErr);
+      }
+    }
 
     res.status(200).json({ ok: true });
   } catch (err: any) {
