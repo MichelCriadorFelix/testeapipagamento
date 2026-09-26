@@ -65,20 +65,8 @@ export default function Layout() {
   // so the first admin to load the app after deploy bootstraps the
   // billing doc straight into "paid, needs a due date" instead of
   // starting the 48h launch-fee clock like a brand-new client would.
-  useEffect(() => {
-    if (!billingLoaded || billing || !user || user.role !== 'admin') return;
-    setDoc(doc(db, 'settings', 'billing'), {
-      launchFeePaid: true,
-      launchFeeDeadline: Date.now(),
-      launchFeeAmount: 200,
-      monthlyFeeAmount: 100,
-      nextDueDate: null,
-      lastConfirmedPaymentAt: Date.now(),
-      pixKey: '21990857331',
-      pixBeneficiary: 'Rafael Vitor Silva',
-      pixBank: 'Infinite Pay',
-    }).catch(err => console.error('Failed to bootstrap billing doc', err));
-  }, [billingLoaded, billing, user]);
+  // (Disabled in this sandbox clone: no billing doc is created and the
+  // billing banner is not rendered.)
 
   const pauseState = useMemo(() => getBillingPauseState(billing), [billing]);
 
@@ -197,9 +185,6 @@ export default function Layout() {
 
   return (
     <div className="flex flex-col min-h-[100dvh]">
-      {isAdmin && user && billing && (
-        <BillingBanner billing={billing} pauseState={pauseState} user={user} />
-      )}
 
       {/* GLOBAL INSTALL BANNER - Displayed whenever app is accessed via web browser */}
       {user && !isStandalone && showInstallBanner && (
