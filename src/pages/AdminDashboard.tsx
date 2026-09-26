@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
-import { collection, query, orderBy, onSnapshot, where, doc, setDoc, limit, increment } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, where, doc, setDoc, limit, increment, updateDoc } from 'firebase/firestore';
 
 import { db, sanitizeForFirestore, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
@@ -461,7 +461,8 @@ export default function AdminDashboard() {
       // for the page to load) means the order is no longer "recent" by the
       // time the listener connects, and the ring never starts even though
       // the order is still sitting there waiting.
-      if (pending > 0) {
+      const unackPaidPix = orders.filter(o => o.paidAt && !o.pixAckAt && o.status === 'preparing').length;
+      if (pending > 0 || unackPaidPix > 0) {
         startRing();
       } else {
         stopRing();
@@ -997,12 +998,13 @@ export default function AdminDashboard() {
               <div className="divide-y divide-gray-100">
                 {activeOrdersList.map(order => {
                   const isNew = order.status === 'pending_payment';
+                  const isPaidPix = !!order.paidAt && !order.pixAckAt;
                   return (
                   <Link
                     key={order.id}
                     to={`/admin/orders/${order.id}`}
                     className={`p-4 flex flex-col sm:flex-row sm:items-center justify-between transition-colors gap-3 block ${
-                      isNew ? 'bg-amber-50 border-l-4 border-amber-400 hover:bg-amber-100/70' : 'hover:bg-gray-50'
+                      isNew ? 'bg-amber-50 border-l-4 border-amber-400 hover:bg-amber-100/70' : isPaidPix ? 'bg-emerald-50 border-l-4 border-emerald-500 ring-2 ring-emerald-400 animate-pulse hover:bg-emerald-100/70' : 'hover:bg-gray-50'
                     }`}
                   >
                     <div className="flex items-start gap-3">
@@ -1013,6 +1015,11 @@ export default function AdminDashboard() {
                       </div>
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
+                          {isPaidPix && (
+                            <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-white bg-emerald-600 px-1.5 py-0.5 rounded">
+                              <BellRing size={10} /> Pago via PIX
+                            </span>
+                          )}
                           {isNew && (
                             <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-white bg-amber-500 px-1.5 py-0.5 rounded animate-pulse">
                               <BellRing size={10} /> Novo Pedido
@@ -1059,6 +1066,15 @@ export default function AdminDashboard() {
                         {getAdminStatusLabel(order.status, order.serviceType)}
                       </span>
                       <p className="font-black text-sm text-gray-900">{formatCurrency(order.total)}</p>
+                      {isPaidPix && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); updateDoc(doc(db, 'pix_test_orders', order.id), { pixAckAt: Date.now() }).catch(console.error); }}
+                          className="px-2 py-1 rounded bg-emerald-600 text-white text-[9px] font-black uppercase tracking-wider hover:bg-emerald-700"
+                        >
+                          Ciente
+                        </button>
+                      )}
                     </div>
                   </Link>
                   );

@@ -43,7 +43,7 @@ const getStepsForOrder = (order: Order | null) => {
   const serviceType = order?.serviceType || 'delivery';
 
   let paymentLabel = 'Pagamento';
-  let paymentDesc = 'Aguardando PIX';
+  let paymentDesc = order?.paidAt ? 'Pago via PIX' : 'Aguardando PIX';
   
   if (method === 'credit') {
     paymentLabel = 'Cartão';
@@ -155,9 +155,18 @@ export default function OrderDetails() {
     return () => unsubCompany();
   }, []);
 
+  // Opening an auto-paid PIX order as admin counts as acknowledging it, which
+  // stops the dashboard's repeating ring/highlight for that order.
+  useEffect(() => {
+    if (!id || !order || user?.role !== 'admin') return;
+    if (order.paidAt && !order.pixAckAt) {
+      updateDoc(doc(db, 'pix_test_orders', id), { pixAckAt: Date.now() }).catch(console.error);
+    }
+  }, [id, order?.paidAt, order?.pixAckAt, user?.role]);
+
   useEffect(() => {
     if (!id) return;
-    
+
     // Listen to Order in real-time
     const orderRef = doc(db, 'pix_test_orders', id);
     const unsubscribeOrder = onSnapshot(orderRef, (snapshot) => {

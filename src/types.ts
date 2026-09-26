@@ -109,6 +109,9 @@ export interface Order {
   pixQrCode?: string;
   pixCopiaECola?: string;
   paidAt?: number;
+  // Set when an admin acknowledges an automatically-paid PIX order; until
+  // then the dashboard keeps ringing and highlighting it.
+  pixAckAt?: number;
 }
 
 export interface ChatMessage {
