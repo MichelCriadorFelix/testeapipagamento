@@ -1248,6 +1248,19 @@ export default function OrderDetails() {
                         Escaneie o QR Code ou copie o código abaixo. O pedido só é encaminhado ao restaurante depois que o pagamento for confirmado — isso é automático e muda esta tela sozinho para "Em preparo".
                       </p>
                       <div className="flex flex-col items-center justify-center space-y-3">
+                        {(() => {
+                          const remaining = Math.max(0, (order.pixCreatedAt || order.createdAt) + PIX_PAYMENT_WINDOW_MS - nowTick);
+                          const mm = String(Math.floor(remaining / 60000)).padStart(2, '0');
+                          const ss = String(Math.floor((remaining % 60000) / 1000)).padStart(2, '0');
+                          const urgent = remaining <= 60000;
+                          return (
+                            <div className={`w-full max-w-xs rounded-xl border-2 px-4 py-2 ${urgent ? 'bg-red-50 border-red-400 text-red-800' : 'bg-white border-yellow-400 text-yellow-900'}`}>
+                              <p className="text-[10px] font-black uppercase tracking-widest">Você tem 5 minutos para pagar</p>
+                              <p className={`font-mono font-black text-3xl leading-tight ${urgent ? 'animate-pulse' : ''}`}>{mm}:{ss}</p>
+                              <p className="text-[10px] font-bold">Depois disso o pedido é cancelado automaticamente.</p>
+                            </div>
+                          );
+                        })()}
                         <img
                           src={`data:image/png;base64,${order.pixQrCode}`}
                           alt="QR Code PIX"
