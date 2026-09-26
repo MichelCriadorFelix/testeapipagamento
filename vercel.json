@@ -10,7 +10,7 @@
   ],
   "rewrites": [
     {
-      "source": "/((?!api|assets|.*\\..*|sw\\.js|workbox-.*\\.js|manifest\\.webmanifest).*)",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ],
