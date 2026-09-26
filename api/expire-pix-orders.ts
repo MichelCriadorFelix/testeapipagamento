@@ -43,7 +43,7 @@ export default async function handler(_req: any, res: any) {
 
     for (const docSnap of stale.docs) {
       const order = docSnap.data() as any;
-      if (order.paymentMethod !== 'pix' || order.paidAt || !(order.createdAt < cutoff)) continue;
+      if (order.paymentMethod !== 'pix' || order.paidAt || !((order.pixCreatedAt || order.createdAt) < cutoff)) continue;
 
       if (order.mpPaymentId && accessToken) {
         const headers = { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' };

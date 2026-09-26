@@ -109,6 +109,7 @@ export default async function handler(req: any, res: any) {
       {
         mpPaymentId: String(mpData.id),
         mpStatus: mpData.status,
+        pixCreatedAt: Date.now(), // server clock: the 5-minute window is measured from here
         pixQrCode: txData.qr_code_base64,
         pixCopiaECola: txData.qr_code,
       },

@@ -37,7 +37,7 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const { orderId, idToken } = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+    const { orderId, idToken, reason } = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
     if (!orderId || typeof orderId !== 'string' || !idToken || typeof idToken !== 'string') {
       res.status(400).json({ error: 'orderId and idToken are required' });
       return;
@@ -61,6 +61,17 @@ export default async function handler(req: any, res: any) {
     if (order.paymentMethod !== 'pix' || order.status !== 'pending_payment' || order.paidAt) {
       res.status(409).json({ error: 'Order can no longer be cancelled', status: order.status });
       return;
+    }
+
+    // An automatic "time is up" cancel is only honoured if the window really
+    // elapsed on the server clock (a customer phone with a wrong clock must
+    // not be able to cancel early). A manual cancel button press is always ok.
+    if (reason === 'expired') {
+      const base = order.pixCreatedAt || order.createdAt;
+      if (Date.now() < base + 5 * 60 * 1000 - 5000) {
+        res.status(409).json({ error: 'Payment window has not elapsed yet' });
+        return;
+      }
     }
 
     const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;

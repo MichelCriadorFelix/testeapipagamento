@@ -112,6 +112,7 @@ export interface Order {
   // Set when an admin acknowledges an automatically-paid PIX order; until
   // then the dashboard keeps ringing and highlighting it.
   pixAckAt?: number;
+  pixCreatedAt?: number;
 }
 
 export interface ChatMessage {

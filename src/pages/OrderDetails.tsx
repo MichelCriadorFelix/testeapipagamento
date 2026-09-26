@@ -170,11 +170,11 @@ export default function OrderDetails() {
   }, [awaitingPix]);
   useEffect(() => {
     if (!awaitingPix || !order || !id || autoCancelSent.current) return;
-    if (nowTick >= order.createdAt + PIX_PAYMENT_WINDOW_MS) {
+    if (nowTick >= (order.pixCreatedAt || order.createdAt) + PIX_PAYMENT_WINDOW_MS) {
       autoCancelSent.current = true;
-      cancelPixOrder(id);
+      cancelPixOrder(id, 'expired').then(ok => { if (!ok) autoCancelSent.current = false; });
     }
-  }, [nowTick, awaitingPix, order?.createdAt, id]);
+  }, [nowTick, awaitingPix, order?.createdAt, order?.pixCreatedAt, id]);
 
   // Customer just placed a PIX order: bring the QR Code into view as soon as
   // it is generated, since paying it is what sends the order to the restaurant.
@@ -1111,7 +1111,7 @@ export default function OrderDetails() {
                 Seu pedido ainda <u>não foi enviado ao restaurante</u>. Pague {formatCurrency(order.total)} pelo QR Code PIX abaixo (ou pelo código copia e cola). Assim que o pagamento for confirmado, o pedido é encaminhado automaticamente.
               </p>
               {(() => {
-                const remaining = Math.max(0, order.createdAt + PIX_PAYMENT_WINDOW_MS - nowTick);
+                const remaining = Math.max(0, (order.pixCreatedAt || order.createdAt) + PIX_PAYMENT_WINDOW_MS - nowTick);
                 const mm = String(Math.floor(remaining / 60000)).padStart(2, '0');
                 const ss = String(Math.floor((remaining % 60000) / 1000)).padStart(2, '0');
                 return (
