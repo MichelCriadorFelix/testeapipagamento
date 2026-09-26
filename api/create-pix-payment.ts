@@ -81,6 +81,9 @@ export default async function handler(req: any, res: any) {
               ? payerEmail
               : 'cliente@sensacaogourmet.com.br',
         },
+        // Charge expires shortly after the 5-minute payment window, so an
+        // order cancelled for non-payment can never be paid afterwards.
+        date_of_expiration: new Date(Date.now() + 6 * 60 * 1000).toISOString().replace('Z', '+00:00'),
         external_reference: orderId,
         notification_url: notificationUrl,
       }),

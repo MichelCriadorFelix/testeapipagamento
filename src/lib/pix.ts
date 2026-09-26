@@ -18,3 +18,25 @@ export async function createPixPayment(orderId: string, amount: number, payerEma
     console.error('Failed to create PIX payment', e);
   }
 }
+
+export const PIX_PAYMENT_WINDOW_MS = 5 * 60 * 1000;
+
+// Customer cancels their own unpaid PIX order (button, or when the 5-minute
+// payment window runs out). The server re-checks ownership and that the
+// charge is still unpaid, so this is safe to call more than once.
+export async function cancelPixOrder(orderId: string): Promise<boolean> {
+  try {
+    const { auth } = await import('./firebase');
+    const idToken = await auth.currentUser?.getIdToken();
+    if (!idToken) return false;
+    const res = await fetch('/api/cancel-pix-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderId, idToken }),
+    });
+    return res.ok;
+  } catch (e) {
+    console.error('Failed to cancel PIX order', e);
+    return false;
+  }
+}

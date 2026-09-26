@@ -14,6 +14,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { doc, updateDoc, collection, query, orderBy, onSnapshot, addDoc, runTransaction } from 'firebase/firestore';
 
 import { db } from '../lib/firebase';
+import { cancelPixOrder, PIX_PAYMENT_WINDOW_MS } from '../lib/pix';
 import { Order, ChatMessage, CompanyInfo } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency, formatSizeLabel } from '../lib/utils';
@@ -108,6 +109,9 @@ export default function OrderDetails() {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pixBlockRef = useRef<HTMLDivElement>(null);
+  const [nowTick, setNowTick] = useState(Date.now());
+  const [cancellingPix, setCancellingPix] = useState(false);
+  const autoCancelSent = useRef(false);
 
   const [deliveryFeeInput, setDeliveryFeeInput] = useState('');
   const [savingDeliveryFee, setSavingDeliveryFee] = useState(false);
@@ -155,6 +159,22 @@ export default function OrderDetails() {
     });
     return () => unsubCompany();
   }, []);
+
+  // Unpaid PIX orders expire after 5 minutes: tick a countdown and, when it
+  // hits zero, ask the server to cancel (the server also re-checks payment).
+  const awaitingPix = !!order && user?.role !== 'admin' && order.paymentMethod === 'pix' && order.status === 'pending_payment' && !order.paidAt;
+  useEffect(() => {
+    if (!awaitingPix) return;
+    const t = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [awaitingPix]);
+  useEffect(() => {
+    if (!awaitingPix || !order || !id || autoCancelSent.current) return;
+    if (nowTick >= order.createdAt + PIX_PAYMENT_WINDOW_MS) {
+      autoCancelSent.current = true;
+      cancelPixOrder(id);
+    }
+  }, [nowTick, awaitingPix, order?.createdAt, id]);
 
   // Customer just placed a PIX order: bring the QR Code into view as soon as
   // it is generated, since paying it is what sends the order to the restaurant.
@@ -1090,13 +1110,39 @@ export default function OrderDetails() {
               <p className="text-xs font-bold leading-relaxed">
                 Seu pedido ainda <u>não foi enviado ao restaurante</u>. Pague {formatCurrency(order.total)} pelo QR Code PIX abaixo (ou pelo código copia e cola). Assim que o pagamento for confirmado, o pedido é encaminhado automaticamente.
               </p>
-              <button
-                type="button"
-                onClick={() => pixBlockRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-                className="mt-3 px-3 py-2 bg-red-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-red-700"
-              >
-                Ir para o QR Code
-              </button>
+              {(() => {
+                const remaining = Math.max(0, order.createdAt + PIX_PAYMENT_WINDOW_MS - nowTick);
+                const mm = String(Math.floor(remaining / 60000)).padStart(2, '0');
+                const ss = String(Math.floor((remaining % 60000) / 1000)).padStart(2, '0');
+                return (
+                  <p className="text-xs font-black mt-2">
+                    Tempo para pagar: <span className="font-mono text-sm">{mm}:{ss}</span> — depois disso o pedido é cancelado automaticamente.
+                  </p>
+                );
+              })()}
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => pixBlockRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                  className="px-3 py-2 bg-red-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-red-700"
+                >
+                  Ir para o QR Code
+                </button>
+                <button
+                  type="button"
+                  disabled={cancellingPix}
+                  onClick={async () => {
+                    if (!id || !window.confirm('Cancelar este pedido? Se você já pagou, não cancele.')) return;
+                    setCancellingPix(true);
+                    const ok = await cancelPixOrder(id);
+                    setCancellingPix(false);
+                    if (!ok) window.alert('Não foi possível cancelar agora. Se o pagamento acabou de ser confirmado, o pedido segue normalmente.');
+                  }}
+                  className="px-3 py-2 bg-white text-red-700 border border-red-300 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-red-100 disabled:opacity-50"
+                >
+                  {cancellingPix ? 'Cancelando...' : 'Cancelar pedido'}
+                </button>
+              </div>
             </div>
           )}
 

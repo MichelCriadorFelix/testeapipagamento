@@ -1,6 +1,9 @@
 {
   "version": 2,
   "cleanUrls": true,
+  "crons": [
+    { "path": "/api/expire-pix-orders", "schedule": "* * * * *" }
+  ],
   "redirects": [
     {
       "source": "/favicon.ico",
