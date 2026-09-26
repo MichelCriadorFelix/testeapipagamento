@@ -273,7 +273,13 @@ export default function AdminMenu() {
     try {
       if (imageFile) {
         const storagePath = `products/${editingId || Date.now()}-${Date.now()}.jpg`;
-        imageUrl = await compressAndUploadImage(imageFile, storagePath, 800, 800, 0.7);
+        try {
+          imageUrl = await compressAndUploadImage(imageFile, storagePath, 800, 800, 0.7);
+        } catch (uploadErr) {
+          // Sandbox has no Supabase configured: save the item without a photo
+          // instead of blocking the whole save.
+          console.warn('Image upload skipped:', uploadErr);
+        }
       }
 
       let updatedFormData: Partial<Product> = { ...formData, imageUrl };
