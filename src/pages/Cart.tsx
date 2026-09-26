@@ -876,7 +876,7 @@ ${window.location.origin}/orders/${orderRef.id}`;
 
         {paymentMethod === 'pix' && (
           <p className="text-[10px] text-gray-400 mt-4 text-center font-bold uppercase tracking-wider">
-            Você receberá as instruções e a chave PIX na próxima etapa para enviar o comprovante.
+            Na próxima tela você verá o QR Code PIX. O pedido só é enviado ao restaurante depois que o pagamento for confirmado.
           </p>
         )}
 

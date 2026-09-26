@@ -107,6 +107,7 @@ export default function OrderDetails() {
   });
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pixBlockRef = useRef<HTMLDivElement>(null);
 
   const [deliveryFeeInput, setDeliveryFeeInput] = useState('');
   const [savingDeliveryFee, setSavingDeliveryFee] = useState(false);
@@ -154,6 +155,14 @@ export default function OrderDetails() {
     });
     return () => unsubCompany();
   }, []);
+
+  // Customer just placed a PIX order: bring the QR Code into view as soon as
+  // it is generated, since paying it is what sends the order to the restaurant.
+  useEffect(() => {
+    if (order && user?.role !== 'admin' && order.paymentMethod === 'pix' && order.status === 'pending_payment' && order.pixQrCode) {
+      pixBlockRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [order?.pixQrCode]);
 
   // Opening an auto-paid PIX order as admin counts as acknowledging it, which
   // stops the dashboard's repeating ring/highlight for that order.
@@ -1071,6 +1080,26 @@ export default function OrderDetails() {
             </div>
           )}
 
+          {/* Customer-facing: PIX must be paid before the order is sent on */}
+          {!isAdmin && order.paymentMethod === 'pix' && order.status === 'pending_payment' && !order.paidAt && (
+            <div className="mb-6 bg-red-50 border-2 border-red-300 rounded-xl p-4 text-red-900 shadow-sm">
+              <h3 className="font-black text-xs mb-1.5 uppercase tracking-widest flex items-center gap-1.5">
+                <span className="w-2 h-2 bg-red-600 rounded-full inline-block animate-pulse"></span>
+                Falta pagar para enviar seu pedido
+              </h3>
+              <p className="text-xs font-bold leading-relaxed">
+                Seu pedido ainda <u>não foi enviado ao restaurante</u>. Pague {formatCurrency(order.total)} pelo QR Code PIX abaixo (ou pelo código copia e cola). Assim que o pagamento for confirmado, o pedido é encaminhado automaticamente.
+              </p>
+              <button
+                type="button"
+                onClick={() => pixBlockRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                className="mt-3 px-3 py-2 bg-red-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-red-700"
+              >
+                Ir para o QR Code
+              </button>
+            </div>
+          )}
+
           {/* Customer-facing notice: neighborhood/fee pending admin review */}
           {!isAdmin && order.deliveryFeePending && (
             <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 text-amber-900 shadow-sm">
@@ -1165,12 +1194,12 @@ export default function OrderDetails() {
           {!isAdmin && order.status === 'pending_payment' && (
             <>
               {(!order.paymentMethod || order.paymentMethod === 'pix') ? (
-                <div className="bg-yellow-50 p-6 rounded-lg border border-yellow-200 mt-6 text-center">
-                  <h3 className="font-bold text-yellow-900 mb-2">Pagamento via PIX</h3>
+                <div ref={pixBlockRef} className="bg-yellow-50 p-6 rounded-lg border border-yellow-200 mt-6 text-center">
+                  <h3 className="font-bold text-yellow-900 mb-2">Pague {formatCurrency(order.total)} via PIX para enviar o pedido</h3>
                   {order.pixQrCode && order.pixCopiaECola ? (
                     <>
                       <p className="text-yellow-800 text-sm mb-4">
-                        Escaneie o QR Code ou copie o código abaixo. A confirmação é automática — assim que o pagamento cair, este pedido muda sozinho para "Em preparo".
+                        Escaneie o QR Code ou copie o código abaixo. O pedido só é encaminhado ao restaurante depois que o pagamento for confirmado — isso é automático e muda esta tela sozinho para "Em preparo".
                       </p>
                       <div className="flex flex-col items-center justify-center space-y-3">
                         <img
